@@ -1,60 +1,54 @@
+import os
 from flask import Flask, jsonify, request
 import requests
-import datetime
 
 app = Flask(__name__)
 
-# Fiktivní herní statistiky (protože budeme offline)
-PLAYER_STATS = {
-    "nickname": "ProGamer_CZ",
-    "game": "Counter-Strike 2",
-    "kills": 5,
-    "deaths": 15,
-    "accuracy": "32%",
-    "rank": "Silver IV"
-}
+# Dynamické načtení IP adresy. Pokud v dockeru není nastavená, použije se localhost.
+OLLAMA_HOST = os.environ.get('OLLAMA_HOST', 'http://host.docker.internal:11434')
 
-# 1. Endpoint: GET /ping (Požadavek ze zadání)
 @app.route('/ping', methods=['GET'])
 def ping():
-    return "pong", 200
+    return "pong"
 
-# 2. Endpoint: GET /status (Vrací JSON s časem, autorem a statistikami)
 @app.route('/status', methods=['GET'])
 def status():
-    return jsonify({
-        "status": "online",
-        "autor": "Tvoje Jmeno",  # Tady si doplň své jméno
-        "aktualni_cas": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "data": PLAYER_STATS
-    })
+    # Tady si kámoš může upravit svoje jméno a statistiky
+    data = {
+        "autor": "martt a kamos",
+        "hra": "Counter-Strike 2",
+        "K/D_ratio": 1.2,
+        "win_rate": "55%"
+    }
+    return jsonify(data)
 
-# 3. Endpoint: POST /ai (Komunikace s Ollama LLM)
 @app.route('/ai', methods=['POST'])
 def ai_coach():
-    # Prompt pro AI využívající naše herní statistiky
-    prompt_text = f"Hráč má {PLAYER_STATS['kills']} killů a {PLAYER_STATS['deaths']} smrtí. Poruď mu jednou krátkou větou, co má zlepšit."
+    # Tady se ptáme AI
+    prompt = "Jsi herní kouč. Napiš jednu krátkou větu česky, jak se zlepšit ve hře, když má hráč špatné K/D ratio."
     
     try:
-        # Volání lokální Ollamy běžící na hostitelském stroji
-        # V Dockeru použijeme 'host.docker.internal' místo 'localhost'
+        # Použijeme dynamickou proměnnou OLLAMA_HOST
         response = requests.post(
-            'http://host.docker.internal:11434/api/generate',
+            f"{OLLAMA_HOST}/api/generate",
             json={
                 "model": "llama3.2:1b",
-                "prompt": prompt_text,
+                "prompt": prompt,
                 "stream": False
             },
-            timeout=10 # Aby aplikace nevisela, když AI neodpovídá
+            timeout=15
         )
         
-        result = response.json()
-        # Vracíme jen jednu krátkou větu podle zadání [cite: 30, 74]
-        return jsonify({"ai_coach_advice": result.get("response", "AI je momentálně mimo provoz.")})
-    
+        if response.status_code == 200:
+            result = response.json()
+            advice = result.get('response', 'Chyba: AI nic nevrátila.')
+            return jsonify({"ai_coach_advice": advice})
+        else:
+            return jsonify({"error": f"Chyba Ollamy: {response.status_code}"}), 500
+            
     except Exception as e:
-        return jsonify({"error": "Nelze se spojit s AI modelem (Ollama).", "details": str(e)}), 500
+        return jsonify({"error": f"Nepodařilo se spojit s Ollamou: {str(e)}"}), 500
 
 if __name__ == '__main__':
-    # Spuštění na nestandardním portu 8081 [cite: 16, 24]
+    # host='0.0.0.0' je klíč k úspěchu – naslouchá na všech IP adresách!
     app.run(host='0.0.0.0', port=8081)

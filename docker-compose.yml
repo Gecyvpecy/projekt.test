@@ -1,11 +1,9 @@
-version: '3.8'
-
 services:
-  herni-app:
+  web_app:
     build: .
-    container_name: herni_ai_api
     ports:
-      - [cite_start]"8081:8081" # Mapování portu HOST:KONTEJNER [cite: 25, 64]
+      - "8081:8081"
+    environment:
+      - OLLAMA_HOST=http://host.docker.internal:11434
     extra_hosts:
-      - [cite_start]"host.docker.internal:host-gateway" # Umožní kontejneru vidět Ollamu na tvém PC [cite: 17, 66]
-    restart: always
+      - "host.docker.internal:host-gateway"
