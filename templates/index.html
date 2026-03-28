@@ -2,111 +2,35 @@
 <html lang="cs">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PC Builder AI Assistant</title>
+    <title>PC Budget AI</title>
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f4f7f6;
-            color: #333;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-        .container {
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            width: 100%;
-            max-width: 400px;
-            text-align: center;
-        }
-        input[type="number"] {
-            width: calc(100% - 22px);
-            padding: 10px;
-            margin: 15px 0;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            font-size: 16px;
-        }
-        button {
-            background-color: #007bff;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            font-size: 16px;
-            cursor: pointer;
-            width: 100%;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        .chat-box {
-            margin-top: 20px;
-            padding: 15px;
-            background-color: #e9ecef;
-            border-radius: 5px;
-            min-height: 50px;
-            text-align: left;
-            font-size: 15px;
-        }
-        .loading {
-            font-style: italic;
-            color: #666;
-        }
+        body { font-family: sans-serif; background: #f0f2f5; display: flex; justify-content: center; padding-top: 50px; }
+        .card { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); width: 350px; }
+        input { width: 100%; padding: 10px; margin: 10px 0; box-sizing: border-box; }
+        button { width: 100%; padding: 10px; background: #007bff; color: white; border: none; cursor: pointer; }
+        #res { margin-top: 20px; padding: 10px; background: #e9ecef; border-left: 4px solid #007bff; min-height: 40px; }
     </style>
 </head>
 <body>
-
-<div class="container">
-    <h2>PC Builder AI Assistant</h2>
-    <p>Zadej svůj budget v Kč a AI ti doporučí komponentu.</p>
-    
-    <input type="number" id="budgetInput" placeholder="Např. 15000" required>
-    <button onclick="askAI()">Poradit komponentu</button>
-
-    <div class="chat-box" id="responseBox">
-        Zde se zobrazí odpověď...
+    <div class="card">
+        <h2>PC AI Rádce</h2>
+        <input type="number" id="b" placeholder="Zadej rozpočet v Kč">
+        <button onclick="ask()">Co mám koupit?</button>
+        <div id="res">Zde se zobrazí rada...</div>
     </div>
-</div>
-
-<script>
-    async function askAI() {
-        const budget = document.getElementById("budgetInput").value;
-        const responseBox = document.getElementById("responseBox");
-
-        if (!budget) {
-            responseBox.innerHTML = "Prosím, zadej nějakou částku.";
-            return;
-        }
-
-        responseBox.innerHTML = '<span class="loading">AI přemýšlí (může to chvilku trvat)...</span>';
-
-        try {
-            const response = await fetch('/ai', {
+    <script>
+        async function ask() {
+            const b = document.getElementById('b').value;
+            const resDiv = document.getElementById('res');
+            resDiv.innerText = "Přemýšlím...";
+            const r = await fetch('/ai', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ budget: budget })
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({budget: b})
             });
-
-            const data = await response.json();
-            
-            if (data.recommendation) {
-                responseBox.innerHTML = "<strong>AI:</strong> " + data.recommendation;
-            } else {
-                responseBox.innerHTML = "<strong>Chyba:</strong> " + (data.error || "Něco se pokazilo.");
-            }
-        } catch (error) {
-            responseBox.innerHTML = "<strong>Chyba sítě:</strong> Nepodařilo se spojit se serverem.";
+            const d = await r.json();
+            resDiv.innerText = d.recommendation || d.error;
         }
-    }
-</script>
-
+    </script>
 </body>
 </html>

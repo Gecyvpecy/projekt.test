@@ -1,9 +1,7 @@
-version: '3.8'
 services:
   web-app:
     build: .
     ports:
-      - [cite_start]"8081:8081" # Mapování portu HOST:CONTAINER [cite: 64]
+      - "8081:8081"
     extra_hosts:
-      - "host.docker.internal:host-gateway" # Umožní aplikaci v kontejneru vidět Ollamu na hostiteli
-    restart: always
+      - "host.docker.internal:host-gateway"

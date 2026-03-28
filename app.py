@@ -4,11 +4,9 @@ import datetime
 
 app = Flask(__name__)
 
-# Konfigurace - pokud učitelův systém pouští tvou app a Ollama běží někde jinde, 
-# případně to upravíš podle jeho instrukcí. Zatím necháváme localhost/host.
+# Adresa pro Ollama běžící na tvém fyzickém PC (mimo kontejner)
 OLLAMA_URL = "http://host.docker.internal:11434/api/generate"
 
-# NOVÉ: Endpoint pro zobrazení webové stránky
 @app.route('/', methods=['GET'])
 def home():
     return render_template('index.html')
@@ -22,36 +20,30 @@ def status():
     return jsonify({
         "status": "running",
         "timestamp": datetime.datetime.now().isoformat(),
-        "author": "Martin Gerstner", 
+        "author": "Tvuj Jmeno", # <--- DOPLŇ SVÉ JMÉNO
         "app": "PC Budget AI Advisor"
     })
 
 @app.route('/ai', methods=['POST'])
 def ai_advisor():
     data = request.json
-    # Defaultní hodnota 0, pokud by náhodou nepřišlo nic
-    budget = data.get("budget", "0") 
+    budget = data.get("budget", "0")
     
-    # Prompt pro lokální model
-    prompt = f"Uživatel má budget {budget} Kč na jednu PC komponentu. Doporuč mu stručně jednu konkrétní aktuální komponentu. Odpověz pouze jednou krátkou větou."
+    prompt = f"Uživatel má budget {budget} Kč na jednu PC komponentu. Doporuč mu stručně jednu konkrétní aktuální komponentu. Odpověz pouze jednou krátkou větou v češtině."
 
     try:
         response = requests.post(OLLAMA_URL, json={
-            "model": "llama3.2:1b",
+            "model": "llama3.2:1b", 
             "prompt": prompt,
             "stream": False
         }, timeout=15)
         
-        # Ošetření, pokud se LLM spojí, ale vrátí nesmysl
         if response.status_code == 200:
-            ai_response = response.json().get("response", "AI momentálně neodpovídá.")
+            ai_response = response.json().get("response", "AI neodpovídá.")
             return jsonify({"recommendation": ai_response})
-        else:
-            return jsonify({"error": f"LLM vrátilo chybu: {response.status_code}"}), 500
-
+        return jsonify({"error": "Chyba LLM"}), 500
     except Exception as e:
-        return jsonify({"error": "Nepodařilo se spojit s lokálním LLM", "details": str(e)}), 500
+        return jsonify({"error": "Spojení s AI selhalo"}), 500
 
 if __name__ == '__main__':
-    # 0.0.0.0 je nutnost, aby aplikace byla dostupná zvenčí
     app.run(host='0.0.0.0', port=8081)
