@@ -1,9 +1,9 @@
+version: '3.8'
 services:
-  web_app:
+  web-app:
     build: .
     ports:
-      - "8081:8081"
-    environment:
-      - OLLAMA_HOST=http://host.docker.internal:11434
+      - [cite_start]"8081:8081" # Mapování portu HOST:CONTAINER [cite: 64]
     extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - "host.docker.internal:host-gateway" # Umožní aplikaci v kontejneru vidět Ollamu na hostiteli
+    restart: always
