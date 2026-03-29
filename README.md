@@ -12,7 +12,7 @@ Projekt pro školní síťovou službu v Dockeru.
 - `POST /ai`: Přijme JSON `{"budget": "5000"}` a vrátí doporučení komponenty
 
 ## Spuštění
-1. [cite_start]Nainstaluj a spusť Ollama s modelem: `ollama run llama3.2:1b` [cite: 28]
+1. [cite_start]Nainstaluj a spusť Ollama s modelem: `ollama run gemma2:27b` [cite: 28]
 2. Vlož soubory na GitHub.
 3. Spusť příkazem: `docker-compose up -d`
 

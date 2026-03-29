@@ -29,7 +29,7 @@ def ai_advisor():
     data = request.json
     budget = data.get("budget", "0")
     
-    prompt = f"Uživatel má budget {budget} Kč na jednu PC . Doporuč mu stručně jednu konkrétní aktuální komponenty. Odpověz v češtině."
+    prompt = f"Uživatel má budget {budget} Kč na PC . Doporuč mu stručně konkrétní aktuální komponenty. Odpověz v češtině."
 
     try:
         response = requests.post(OLLAMA_URL, json={
