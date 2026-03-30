@@ -33,7 +33,7 @@ def ai_advisor():
 
     try:
         response = requests.post(OLLAMA_URL, json={
-            "model": "gemma2:9b", 
+            "model": "gemma3:27b", 
             "prompt": prompt,
             "stream": False
         }, timeout=15)
