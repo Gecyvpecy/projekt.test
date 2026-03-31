@@ -20,7 +20,7 @@ def status():
     return jsonify({
         "status": "running",
         "timestamp": datetime.datetime.now().isoformat(),
-        "author": "Tvuj Jmeno", # <--- DOPLŇ SVÉ JMÉNO
+        "author": "Martin Gerstner", # <--- DOPLŇ SVÉ JMÉNO
         "app": "PC Budget AI Advisor"
     })
 
