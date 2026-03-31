@@ -20,7 +20,7 @@ def status():
     return jsonify({
         "status": "running",
         "timestamp": datetime.datetime.now().isoformat(),
-        "author": "Martin Gerstner", # <--- DOPLŇ SVÉ JMÉNO
+        "author": "Martin Gerstner", 
         "app": "PC Budget AI Advisor"
     })
 
@@ -32,7 +32,7 @@ def ai_advisor():
     prompt = f"Uživatel má budget {budget} Kč na jednu PC komponentu. Doporuč mu stručně jednu konkrétní aktuální komponentu. Odpověz pouze jednou krátkou větou v češtině."
 
     try:
-        response = requests.post(OLLAMA_URL, json={
+        response = requests.post(GEMMA_URL, json={
             "model": "gemma3:27b", 
             "prompt": prompt,
             "stream": False
