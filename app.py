@@ -6,8 +6,8 @@ import datetime
 app = Flask(__name__)
 
 # 2. Čtení proměnných prostředí (přesně podle zadání)
-api_key = os.environ.get("OPENAI_API_KEY")
-base_url = os.environ.get("OPENAI_BASE_URL")
+api_key = os.environ.get("sk-U7yZ6buxpp7bktFvNWhfSw")
+base_url = os.environ.get("https://kurim.ithope.eu/v1")
 
 @app.route('/', methods=['GET'])
 def home():
