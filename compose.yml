@@ -1,0 +1,11 @@
+services:
+  app:
+    build: .
+    ports:
+      # První číslo je port, který uvidíš ty v prohlížeči. 
+      # Druhé číslo (vpravo) musí být stejné jako proměnná PORT dole.
+      - "8081:8081"
+    environment:
+      - PORT=8081
+      - OPENAI_API_KEY=sk-U7yZ6buxpp7bktFvNWhfSw
+      - OPENAI_BASE_URL=https://kurim.ithope.eu/v1

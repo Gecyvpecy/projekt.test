@@ -1,11 +1,13 @@
+import os
 from flask import Flask, request, jsonify, render_template
 import requests
 import datetime
 
 app = Flask(__name__)
 
-# Adresa pro Ollama běžící na tvém fyzickém PC (mimo kontejner)
-OLLAMA_URL = "http://host.docker.internal:11434/api/generate"
+# 2. Čtení proměnných prostředí (přesně podle zadání)
+api_key = os.environ.get("OPENAI_API_KEY")
+base_url = os.environ.get("OPENAI_BASE_URL")
 
 @app.route('/', methods=['GET'])
 def home():
@@ -31,19 +33,30 @@ def ai_advisor():
     
     prompt = f"Uživatel má budget {budget} Kč na jednu PC komponentu. Doporuč mu stručně jednu konkrétní aktuální komponentu. Odpověz pouze jednou krátkou větou v češtině."
 
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+        "model": "gemma3:27b", 
+        "messages": [{"role": "user", "content": prompt}],
+        "stream": False
+    }
+
     try:
-        response = requests.post(GEMMA_URL, json={
-            "model": "gemma3:27b", 
-            "prompt": prompt,
-            "stream": False
-        }, timeout=15)
+        # Použití base_url z proměnných prostředí
+        target_url = f"{base_url}/chat/completions"
+        response = requests.post(target_url, headers=headers, json=payload, timeout=15, verify=False)
         
         if response.status_code == 200:
-            ai_response = response.json().get("response", "AI neodpovídá.")
+            ai_response = response.json()['choices'][0]['message']['content']
             return jsonify({"recommendation": ai_response})
         return jsonify({"error": "Chyba LLM"}), 500
     except Exception as e:
         return jsonify({"error": "Spojení s AI selhalo"}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8081)
+    # 3. Port - aplikace naslouchá na portu z proměnné PORT (default 5000)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
