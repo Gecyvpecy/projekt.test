@@ -3,7 +3,9 @@ services:
     build: .
     ports:
       - "8081:8081"
+    # Docker Compose automaticky hledá soubor .env v aktuálním adresáři
+    # a tyto proměnné předá do kontejneru.
     environment:
-      - PORT=8081
-      - OPENAI_API_KEY=sk-U7yZ6buxpp7bktFvNWhfSw
-      - OPENAI_BASE_URL=https://kurim.ithope.eu/v1
+      - PORT
+      - OPENAI_API_KEY
+      - OPENAI_BASE_URL
