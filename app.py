@@ -13,7 +13,7 @@ load_dotenv()
 app = Flask(__name__)
 
 # Konfigurace - na serveru musí být OPENAI_BASE_URL=https://kurim.ithope.eu/v1
-api_key = os.environ.get("OPENAI_API_KEY", "tvuj_klic_nebo_placeholder")
+api_key = os.environ.get("OPENAI_API_KEY",)
 base_url = os.environ.get("OPENAI_BASE_URL", "https://kurim.ithope.eu/v1")
 
 @app.route('/', methods=['GET'])
