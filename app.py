@@ -53,7 +53,7 @@ def ai_advisor():
         clean_url = base_url.rstrip('/')
         target_url = f"{clean_url}/chat/completions"
         
-        response = requests.post(target_url, headers=headers, json=payload, timeout=15)
+        response = requests.post(target_url, headers=headers, json=payload, timeout=15, verify=False)
         
         if response.status_code == 200:
             ai_response = response.json()['choices'][0]['message']['content']
