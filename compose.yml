@@ -2,10 +2,8 @@ services:
   web:
     build: .
     ports:
-      - "8081:8081"
-    # Docker Compose automaticky hledá soubor .env v aktuálním adresáři
-    # a tyto proměnné předá do kontejneru.
+      - "8081:5000"  # Přístup zvenku přes 8081, uvnitř kontejneru jde na 5000
     environment:
-      - PORT
-      - OPENAI_API_KEY
-      - OPENAI_BASE_URL
+      - PORT=5000
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL}
