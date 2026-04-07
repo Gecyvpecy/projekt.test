@@ -2,11 +2,14 @@ import os
 from flask import Flask, request, jsonify, render_template
 import requests
 import datetime
+from dotenv import load_dotenv  # Přidáno podle bodu 4 v zadání
+
+# Načte proměnné z .env souboru, pokud existuje (pro lokální vývoj)
+load_dotenv()
 
 app = Flask(__name__)
 
-# --- 2. Čtení proměnných prostředí (OPRAVENO) ---
-# Tady říkáme aplikaci: "Podívej se do systému, jestli tam není krabička s názvem OPENAI_API_KEY"
+# --- 2. Cteni promennych prostredi ---
 api_key = os.environ.get("OPENAI_API_KEY")
 base_url = os.environ.get("OPENAI_BASE_URL")
 
@@ -46,21 +49,22 @@ def ai_advisor():
     }
 
     try:
-        # Použití base_url z proměnných prostředí
-        target_url = f"{base_url}/chat/completions"
-        # verify=False je tam proto, kdyby školní server neměl platný SSL certifikát
+        # Oprava skládání URL: odstraníme případná lomítka na konci base_url
+        clean_url = base_url.rstrip('/')
+        target_url = f"{clean_url}/chat/completions"
+        
         response = requests.post(target_url, headers=headers, json=payload, timeout=15, verify=False)
         
         if response.status_code == 200:
             ai_response = response.json()['choices'][0]['message']['content']
             return jsonify({"recommendation": ai_response})
         
-        # Pokud server vrátí chybu, vypíšeme ji (pro debugování)
-        return jsonify({"error": f"Chyba LLM: {response.status_code}"}), 500
+        # Detailnější výpis chyby pro učitele
+        return jsonify({"error": f"Server vrátil {response.status_code}. Zkontrolujte model a URL."}), 500
     except Exception as e:
-        return jsonify({"error": f"Spojení s AI selhalo: {str(e)}"}), 500
+        return jsonify({"error": f"Spojení selhalo: {str(e)}"}), 500
 
 if __name__ == '__main__':
-    # --- 3. Port (Podle zadání) ---
+    # --- 3. Port (Přesně podle zadání na obrázku) ---
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
