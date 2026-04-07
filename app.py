@@ -5,9 +5,10 @@ import datetime
 
 app = Flask(__name__)
 
-# 2. Čtení proměnných prostředí (přesně podle zadání)
-api_key = os.environ.get("")
-base_url = os.environ.get("https://kurim.ithope.eu/v1")
+# --- 2. Čtení proměnných prostředí (OPRAVENO) ---
+# Tady říkáme aplikaci: "Podívej se do systému, jestli tam není krabička s názvem OPENAI_API_KEY"
+api_key = os.environ.get("OPENAI_API_KEY")
+base_url = os.environ.get("OPENAI_BASE_URL")
 
 @app.route('/', methods=['GET'])
 def home():
@@ -47,15 +48,19 @@ def ai_advisor():
     try:
         # Použití base_url z proměnných prostředí
         target_url = f"{base_url}/chat/completions"
+        # verify=False je tam proto, kdyby školní server neměl platný SSL certifikát
         response = requests.post(target_url, headers=headers, json=payload, timeout=15, verify=False)
         
         if response.status_code == 200:
             ai_response = response.json()['choices'][0]['message']['content']
             return jsonify({"recommendation": ai_response})
-        return jsonify({"error": "Chyba LLM"}), 500
+        
+        # Pokud server vrátí chybu, vypíšeme ji (pro debugování)
+        return jsonify({"error": f"Chyba LLM: {response.status_code}"}), 500
     except Exception as e:
-        return jsonify({"error": "Spojení s AI selhalo"}), 500
+        return jsonify({"error": f"Spojení s AI selhalo: {str(e)}"}), 500
 
 if __name__ == '__main__':
-    # 3. Port - aplikace naslouchá na portu z proměnné PORT (default 5000)
-  app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    # --- 3. Port (Podle zadání) ---
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
