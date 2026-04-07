@@ -1,17 +1,20 @@
 import os
-from flask import Flask, request, jsonify, render_template
 import requests
 import datetime
+import urllib3
+from flask import Flask, request, jsonify, render_template
 from dotenv import load_dotenv
 
-# Načte .env pouze pokud existuje (lokálně), na serveru se ignoruje
+# Vypne varování o nezabezpečeném HTTPS (protože používáme verify=False)
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 load_dotenv()
 
 app = Flask(__name__)
 
-# Načtení konfigurace
-api_key = os.environ.get("OPENAI_API_KEY")
-base_url = os.environ.get("OPENAI_BASE_URL")
+# Konfigurace - na serveru musí být OPENAI_BASE_URL=https://kurim.ithope.eu/v1
+api_key = os.environ.get("OPENAI_API_KEY", "tvuj_klic_nebo_placeholder")
+base_url = os.environ.get("OPENAI_BASE_URL", "https://kurim.ithope.eu/v1")
 
 @app.route('/', methods=['GET'])
 def home():
@@ -28,10 +31,6 @@ def status():
 
 @app.route('/ai', methods=['POST'])
 def ai_advisor():
-    # Kontrola, zda jsou nastaveny API klíče a URL
-    if not api_key or not base_url:
-        return jsonify({"error": "Chybí konfigurace API na serveru (ENV proměnné)."}), 500
-
     data = request.json
     budget = data.get("budget", "0")
     
@@ -43,22 +42,33 @@ def ai_advisor():
     }
 
     payload = {
-        "model": "gpt-4o-mini",  # Změněno na standardní model (uprav dle potřeby)
+        "model": "gemma3:27b", 
         "messages": [{"role": "user", "content": prompt}],
         "stream": False
     }
 
     try:
-        # Sestavení URL
+        # Skládání URL pro endpoint kurim.ithope.eu/v1
         clean_url = base_url.rstrip('/')
         target_url = f"{clean_url}/chat/completions"
         
-        response = requests.post(target_url, headers=headers, json=payload, timeout=15, verify=False)
+        # DEBUG výpis do konzole dockeru (uvidíš v logu, kam se to skutečně posílá)
+        print(f"DEBUG: Volám URL: {target_url}")
+
+        # verify=False je nutné, pokud server nemá platný SSL certifikát
+        response = requests.post(
+            target_url, 
+            headers=headers, 
+            json=payload, 
+            timeout=20, 
+            verify=False
+        )
         
         if response.status_code == 200:
             ai_response = response.json()['choices'][0]['message']['content']
             return jsonify({"recommendation": ai_response})
         else:
+            # Pokud server vrátí chybu, pošleme ji do frontendu pro diagnostiku
             return jsonify({
                 "error": f"Server vrátil {response.status_code}.",
                 "details": response.text
@@ -68,6 +78,5 @@ def ai_advisor():
         return jsonify({"error": f"Spojení selhalo: {str(e)}"}), 500
 
 if __name__ == '__main__':
-    # Port se bere z ENV, defaultně 5000
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
