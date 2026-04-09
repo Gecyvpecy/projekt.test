@@ -2,22 +2,29 @@
 <html lang="cs">
 <head>
     <meta charset="UTF-8">
-    <title>Login | PC AI Advisor</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Přihlášení | PC AI Advisor</title>
     <style>
-        body { font-family: sans-serif; background: #f3f4f6; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .card { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 320px; }
-        input { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
-        button { width: 100%; padding: 10px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; color: white; margin-top: 5px; }
-        .btn-login { background: #2563eb; }
-        .btn-reg { background: #10b981; }
-        .msg { padding: 10px; border-radius: 6px; margin-bottom: 10px; text-align: center; font-size: 0.9rem; }
-        .error { background: #fee2e2; color: #dc2626; border: 1px solid #dc2626; }
-        .success { background: #d1fae5; color: #065f46; border: 1px solid #10b981; }
+        :root { --primary: #2563eb; --secondary: #10b981; --dark: #1f2937; --light: #f3f4f6; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--light); display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: white; padding: 2.5rem; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
+        h2 { text-align: center; color: var(--dark); margin-bottom: 1.5rem; }
+        input { width: 100%; padding: 12px; margin-bottom: 1rem; border: 1px solid #d1d5db; border-radius: 8px; box-sizing: border-box; font-size: 1rem; }
+        button { width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+        .btn-login { background: var(--primary); color: white; }
+        .btn-reg { background: var(--secondary); color: white; margin-top: 0.5rem; }
+        button:hover { opacity: 0.9; }
+        .info { text-align: center; margin-top: 1.5rem; font-size: 0.9rem; color: #6b7280; }
+        
+        /* Styl pro chybové hlášky */
+        .msg { padding: 10px; border-radius: 8px; margin-bottom: 1rem; text-align: center; font-weight: 500; }
+        .error { background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; }
+        .success { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
     </style>
 </head>
 <body>
     <div class="card">
-        <h2 style="text-align: center;">PC AI Advisor</h2>
+        <h2>PC AI Advisor</h2>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}
@@ -30,15 +37,15 @@
         <form action="/login_user" method="POST">
             <input type="text" name="username" placeholder="Uživatelské jméno" required>
             <input type="password" name="password" placeholder="Heslo" required>
-            <button type="submit" class="btn-login">Přihlásit se</button>
+            <button type="submit" class="btn-login">Vstoupit do aplikace</button>
         </form>
 
-        <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
+        <div class="info">Nemáte účet? Zaregistrujte se níže:</div>
         
         <form action="/register_user" method="POST">
             <input type="text" name="username" placeholder="Nové jméno" required>
             <input type="password" name="password" placeholder="Nové heslo" required>
-            <button type="submit" class="btn-reg">Registrovat se</button>
+            <button type="submit" class="btn-reg">Vytvořit nový účet</button>
         </form>
     </div>
 </body>
