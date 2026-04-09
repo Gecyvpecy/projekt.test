@@ -3,31 +3,29 @@ import redis
 import datetime
 import requests
 import urllib3
-from flask import Flask, request, jsonify, render_template, redirect, url_for, session
+from flask import Flask, request, jsonify, render_template, redirect, url_for, session, flash
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 
-# --- KONFIGURACE A ZABEZPEČENÍ ---
+# --- KONFIGURACE ---
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-load_dotenv() # Načtení .env pro lokální vývoj
+load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = "super_tajny_klic_pro_session" # Nutné pro login
+app.secret_key = os.environ.get("FLASK_SECRET", "tajny-klic-123") # Pro session a flash
 
-# --- PROMĚNNÉ PROSTŘEDÍ (BOD 2 ZADÁNÍ) ---
+# --- PROMĚNNÉ PROSTŘEDÍ ---
 api_key = os.environ.get("OPENAI_API_KEY")
 base_url = os.environ.get("OPENAI_BASE_URL", "https://kurim.ithope.eu/v1")
-# V compose.yml použij název služby 'cache' (bez podtržítek!)
 redis_host = os.environ.get("REDIS_HOST", "cache")
 
-# --- PŘIPOJENÍ K DATABÁZI (BOD 5 ZADÁNÍ) ---
+# --- PŘIPOJENÍ K DB ---
 r = redis.Redis(host=redis_host, port=6379, decode_responses=True)
 
-# --- ROUTY PRO PŘIHLÁŠENÍ A REGISTRACI ---
+# --- PŘIHLÁŠENÍ A REGISTRACE ---
 
 @app.route('/')
 def index():
-    # Pokud je uživatel v session, pustíme ho k AI, jinak na login
     if 'user' in session:
         return render_template('index.html')
     return redirect(url_for('login_page'))
@@ -42,39 +40,61 @@ def register():
     password = request.form.get('password')
     
     if not username or not password:
-        return "Chybí údaje", 400
+        flash('Vyplňte všechna pole!', 'error')
+        return redirect(url_for('login_page'))
 
-    # BEZPEČNOST: Heslo v DB neuvidíš, ukládáme jen hash
-    hashed_password = generate_password_hash(password)
-    
     if r.exists(f"user:{username}"):
-        return "Uživatel už existuje", 400
+        flash('Uživatel již existuje!', 'error')
+        return redirect(url_for('login_page'))
         
-    r.set(f"user:{username}", hashed_password)
-    r.lpush('log_pristupu', f"Registrace: {username} ({datetime.datetime.now().strftime('%H:%M')})")
+    # HASHUJEME HESLO - nikdo ho nepřečte
+    hashed_pw = generate_password_hash(password)
+    r.set(f"user:{username}", hashed_pw)
+    r.lpush('log_pristupu', f"Registrace: {username} ({datetime.datetime.now().strftime('%H:%M:%S')})")
     
-    # PO REGISTRACI HNED NA LOGIN
+    flash('Registrace úspěšná! Nyní se přihlaste.', 'success')
     return redirect(url_for('login_page'))
 
 @app.route('/login_user', methods=['POST'])
 def login():
     username = request.form.get('username')
     password = request.form.get('password')
-    
     stored_hash = r.get(f"user:{username}")
     
     if stored_hash and check_password_hash(stored_hash, password):
         session['user'] = username
         r.lpush('log_pristupu', f"Login: {username}")
         return redirect(url_for('index'))
-    return "Špatné jméno nebo heslo", 401
+    else:
+        flash('Špatné jméno nebo heslo!', 'error')
+        return redirect(url_for('login_page'))
 
 @app.route('/logout')
 def logout():
     session.pop('user', None)
     return redirect(url_for('login_page'))
 
-# --- AI PORADCE (GEMMA 3:27B) ---
+# --- ZABEZPEČENÝ ADMIN DASHBOARD ---
+
+@app.route('/status')
+def status():
+    # 1. Musí být přihlášen
+    if 'user' not in session:
+        flash('Pro vstup do admin panelu se musíte přihlásit.', 'error')
+        return redirect(url_for('login_page'))
+
+    # 2. Musí to být jméno 'admin'
+    if session['user'] != 'admin':
+        return "<h1>Přístup odepřen</h1><p>Pouze uživatel 'admin' může prohlížet databázi.</p>", 403
+
+    # Získání dat pro Dashboard
+    user_keys = r.keys("user:*")
+    seznam_uzivatelu = [k.replace("user:", "") for k in user_keys]
+    logs = r.lrange('log_pristupu', 0, -1)
+    
+    return render_template('admin.html', uzivatele=seznam_uzivatelu, logy=logs)
+
+# --- AI PORADCE ---
 
 @app.route('/ai', methods=['POST'])
 def ai_advisor():
@@ -84,48 +104,24 @@ def ai_advisor():
     data = request.json
     budget = data.get("budget", "0")
     
-    prompt = f"Uživatel má budget {budget} Kč na PC komponentu. Doporuč jednu konkrétní aktuální komponentu jednou větou česky."
-
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json"
-    }
-
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     payload = {
         "model": "gemma3:27b", 
-        "messages": [{"role": "user", "content": prompt}],
+        "messages": [{"role": "user", "content": f"Doporuč PC komponentu za {budget} Kč. Jedna věta."}],
         "stream": False
     }
 
     try:
-        # Ošetření URL, aby nevznikla chyba 404 kvůli lomítkům
         target_url = f"{base_url.rstrip('/')}/chat/completions"
-        
-        response = requests.post(target_url, headers=headers, json=payload, timeout=20, verify=False)
-        
-        if response.status_code == 200:
-            ai_response = response.json()['choices'][0]['message']['content']
-            r.lpush('log_pristupu', f"AI Dotaz: {session['user']} (Budget: {budget})")
-            return jsonify({"recommendation": ai_response})
-        else:
-            return jsonify({"error": f"Chyba LLM: {response.status_code}"}), response.status_code
-
+        res = requests.post(target_url, headers=headers, json=payload, timeout=20, verify=False)
+        if res.status_code == 200:
+            msg = res.json()['choices'][0]['message']['content']
+            r.lpush('log_pristupu', f"AI: {session['user']} (Budget: {budget})")
+            return jsonify({"recommendation": msg})
+        return jsonify({"error": "Chyba AI"}), 500
     except Exception as e:
-        return jsonify({"error": f"Spojení selhalo: {str(e)}"}), 500
-
-# --- STATUS A ADMIN (BOD 5) ---
-
-@app.route('/status')
-def status():
-    # Výpis logů z databáze Redis
-    logs = r.lrange('log_pristupu', 0, -1)
-    return jsonify({
-        "app": "PC Builder AI",
-        "author": "Martin Gerstner",
-        "logs_from_db": logs
-    })
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    # Poslech na portu z proměnné PORT (BOD 3 ZADÁNÍ)
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
