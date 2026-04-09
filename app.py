@@ -7,27 +7,27 @@ from flask import Flask, request, jsonify, render_template, redirect, url_for, s
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 
-# --- KONFIGURACE ---
+# --- KONFIGURACE A ZABEZPEČENÍ ---
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-load_dotenv()
+load_dotenv() # Načtení .env pro lokální vývoj
 
 app = Flask(__name__)
-app.secret_key = "tajny_klic_pro_session" # Nutné pro fungování session/přihlášení
+app.secret_key = "super_tajny_klic_pro_session" # Nutné pro login
 
-# --- NAČTENÍ PROMĚNNÝCH PROSTŘEDÍ (BOD 2) ---
+# --- PROMĚNNÉ PROSTŘEDÍ (BOD 2 ZADÁNÍ) ---
 api_key = os.environ.get("OPENAI_API_KEY")
 base_url = os.environ.get("OPENAI_BASE_URL", "https://kurim.ithope.eu/v1")
-redis_host = os.environ.get("REDIS_HOST", "localhost")
+# V compose.yml použij název služby 'cache' (bez podtržítek!)
+redis_host = os.environ.get("REDIS_HOST", "cache")
 
-# --- PŘIPOJENÍ K DATABÁZI (BOD 5) ---
-# Používáme Redis pro ukládání uživatelů a historie logů
+# --- PŘIPOJENÍ K DATABÁZI (BOD 5 ZADÁNÍ) ---
 r = redis.Redis(host=redis_host, port=6379, decode_responses=True)
 
-# --- ROUTY PRO PŘIHLÁŠENÍ ---
+# --- ROUTY PRO PŘIHLÁŠENÍ A REGISTRACI ---
 
 @app.route('/')
 def index():
-    # Pokud je uživatel přihlášen, uvidí AI poradce, jinak jde na login
+    # Pokud je uživatel v session, pustíme ho k AI, jinak na login
     if 'user' in session:
         return render_template('index.html')
     return redirect(url_for('login_page'))
@@ -42,18 +42,19 @@ def register():
     password = request.form.get('password')
     
     if not username or not password:
-        return "Chybí jméno nebo heslo", 400
+        return "Chybí údaje", 400
 
-    # HESLO V DATABÁZI NEBUDE VIDĚT (převede se na hash)
+    # BEZPEČNOST: Heslo v DB neuvidíš, ukládáme jen hash
     hashed_password = generate_password_hash(password)
     
     if r.exists(f"user:{username}"):
-        return "Uživatel již existuje", 400
+        return "Uživatel už existuje", 400
         
-    # Uložíme do Redisu (klíč je user:jméno, hodnota je hash hesla)
     r.set(f"user:{username}", hashed_password)
-    r.lpush('log_pristupu', f"Registrace: {username} ({datetime.datetime.now().strftime('%H:%M:%S')})")
-    return "Registrace úspěšná! Nyní se můžete přihlásit na stránce /login."
+    r.lpush('log_pristupu', f"Registrace: {username} ({datetime.datetime.now().strftime('%H:%M')})")
+    
+    # PO REGISTRACI HNED NA LOGIN
+    return redirect(url_for('login_page'))
 
 @app.route('/login_user', methods=['POST'])
 def login():
@@ -62,30 +63,28 @@ def login():
     
     stored_hash = r.get(f"user:{username}")
     
-    # Ověření hesla proti uloženému hagi
     if stored_hash and check_password_hash(stored_hash, password):
         session['user'] = username
-        r.lpush('log_pristupu', f"Přihlášení: {username} ({datetime.datetime.now().strftime('%H:%M:%S')})")
+        r.lpush('log_pristupu', f"Login: {username}")
         return redirect(url_for('index'))
-    return "Chybné jméno nebo heslo", 401
+    return "Špatné jméno nebo heslo", 401
 
 @app.route('/logout')
 def logout():
     session.pop('user', None)
     return redirect(url_for('login_page'))
 
-# --- AI PORADCE (TVÁ PŮVODNÍ LOGIKA) ---
+# --- AI PORADCE (GEMMA 3:27B) ---
 
 @app.route('/ai', methods=['POST'])
 def ai_advisor():
-    # Kontrola, zda je uživatel přihlášen
     if 'user' not in session:
-        return jsonify({"error": "Přístup odepřen. Přihlaste se."}), 403
+        return jsonify({"error": "Nepřihlášen"}), 403
 
     data = request.json
     budget = data.get("budget", "0")
     
-    prompt = f"Uživatel má budget {budget} Kč na jednu PC komponentu. Doporuč mu stručně jednu konkrétní aktuální komponentu. Odpověz pouze jednou krátkou větou v češtině."
+    prompt = f"Uživatel má budget {budget} Kč na PC komponentu. Doporuč jednu konkrétní aktuální komponentu jednou větou česky."
 
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -99,35 +98,34 @@ def ai_advisor():
     }
 
     try:
-        clean_url = base_url.rstrip('/')
-        target_url = f"{clean_url}/chat/completions"
+        # Ošetření URL, aby nevznikla chyba 404 kvůli lomítkům
+        target_url = f"{base_url.rstrip('/')}/chat/completions"
         
         response = requests.post(target_url, headers=headers, json=payload, timeout=20, verify=False)
         
         if response.status_code == 200:
             ai_response = response.json()['choices'][0]['message']['content']
-            # Uložíme dotaz do historie v DB
-            r.lpush('log_pristupu', f"Dotaz AI: {session['user']} (Budget: {budget})")
+            r.lpush('log_pristupu', f"AI Dotaz: {session['user']} (Budget: {budget})")
             return jsonify({"recommendation": ai_response})
         else:
-            return jsonify({"error": f"Chyba LLM: {response.status_code}"}), 500
+            return jsonify({"error": f"Chyba LLM: {response.status_code}"}), response.status_code
 
     except Exception as e:
         return jsonify({"error": f"Spojení selhalo: {str(e)}"}), 500
 
-# --- ADMIN PŘEHLED (PRO KONTROLU DATABÁZE) ---
+# --- STATUS A ADMIN (BOD 5) ---
 
-@app.route('/status', methods=['GET'])
+@app.route('/status')
 def status():
-    # Zde uvidíš logy přihlášení a jména uživatelů (ale ne hesla!)
+    # Výpis logů z databáze Redis
     logs = r.lrange('log_pristupu', 0, -1)
     return jsonify({
-        "status": "running",
+        "app": "PC Builder AI",
         "author": "Martin Gerstner",
-        "prihlaseni_uzivatele": logs
+        "logs_from_db": logs
     })
 
 if __name__ == '__main__':
-    # Bod 3 - Port z proměnné prostředí
+    # Poslech na portu z proměnné PORT (BOD 3 ZADÁNÍ)
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
