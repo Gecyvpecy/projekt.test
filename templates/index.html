@@ -12,12 +12,15 @@
         .main-card { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center; }
         input { padding: 12px; width: 60%; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 1.1rem; margin-bottom: 1rem; }
         button { padding: 12px 24px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 1.1rem; }
-        #result-box { margin-top: 2rem; padding: 1.5rem; border-radius: 8px; display: none; line-height: 1.6; }
-        .success { background: #ecfdf5; border: 1px solid #10b981; color: #065f46; }
-        .error { background: #fef2f2; border: 1px solid #dc2626; color: #991b1b; }
-        .loader { display: none; margin: 10px auto; border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; }
+        
+        #result-box { margin-top: 2rem; padding: 1.5rem; border-radius: 8px; display: none; line-height: 1.6; text-align: left; }
+        .success-res { background: #ecfdf5; border: 1px solid #10b981; color: #065f46; }
+        .error-res { background: #fef2f2; border: 1px solid #dc2626; color: #991b1b; }
+        
+        .loader { display: none; margin: 20px auto; border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .logout-btn { color: #dc2626; text-decoration: none; font-weight: 600; }
+        .logout-btn { color: #dc2626; text-decoration: none; font-weight: 600; border: 1px solid #dc2626; padding: 5px 12px; border-radius: 6px; }
+        .logout-btn:hover { background: #dc2626; color: white; }
     </style>
 </head>
 <body>
@@ -33,7 +36,7 @@
     <div class="container">
         <div class="main-card">
             <h1>Kolik chcete investovat?</h1>
-            <p>Zadejte váš budget v Kč a naše AI (Gemma 3) vám doporučí nejlepší komponentu.</p>
+            <p>Zadejte váš budget v Kč a naše AI vám doporučí nejlepší komponentu.</p>
             
             <input type="number" id="budgetInput" placeholder="Např. 15000" min="0">
             <br>
@@ -56,7 +59,6 @@
                 return;
             }
 
-            // UI stav: načítání
             resultBox.style.display = 'none';
             loader.style.display = 'block';
             btn.disabled = true;
@@ -69,23 +71,22 @@
                 });
 
                 const data = await response.json();
-
                 loader.style.display = 'none';
                 resultBox.style.display = 'block';
                 btn.disabled = false;
 
                 if (response.ok) {
-                    resultBox.className = 'success';
-                    resultBox.innerHTML = `<strong>Doporučení:</strong><br>${data.recommendation}`;
+                    resultBox.className = 'success-res';
+                    resultBox.innerHTML = `<strong>Doporučení od AI:</strong><br>${data.recommendation}`;
                 } else {
-                    resultBox.className = 'error';
-                    resultBox.innerText = "Chyba: " + (data.error || "Nepodařilo se získat odpověď.");
+                    resultBox.className = 'error-res';
+                    resultBox.innerText = "Chyba: " + (data.error || "LLM server nenašel odpověď.");
                 }
             } catch (err) {
                 loader.style.display = 'none';
                 resultBox.style.display = 'block';
-                resultBox.className = 'error';
-                resultBox.innerText = "Chyba spojení se serverem.";
+                resultBox.className = 'error-res';
+                resultBox.innerText = "Chyba: Spojení se serverem selhalo.";
                 btn.disabled = false;
             }
         }
