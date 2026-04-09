@@ -1,5 +1,5 @@
 services:
-  web_app:
+  app:  # Místo 'web_app' použij jen 'app' (splňuje limit 21 znaků)
     build: .
     ports:
       - "8081:8081"
@@ -7,9 +7,9 @@ services:
       - PORT=8081
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - OPENAI_BASE_URL=${OPENAI_BASE_URL}
-      - REDIS_HOST=moje_db
+      - REDIS_HOST=moje-db # I zde nepoužívej podtržítko
     depends_on:
-      - moje_db
+      - moje-db
 
-  moje_db:
-    image: redis:7-alpine # Povolený image
+  moje-db: # Název služby pro databázi bez podtržítek
+    image: redis:7-alpine
