@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Přihlášení | PC AI Advisor</title>
+    <style>
+        :root { --primary: #2563eb; --secondary: #10b981; --dark: #1f2937; --light: #f3f4f6; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--light); display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: white; padding: 2.5rem; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
+        h2 { text-align: center; color: var(--dark); margin-bottom: 1.5rem; }
+        input { width: 100%; padding: 12px; margin-bottom: 1rem; border: 1px solid #d1d5db; border-radius: 8px; box-sizing: border-box; font-size: 1rem; }
+        button { width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+        .btn-login { background: var(--primary); color: white; }
+        .btn-reg { background: var(--secondary); color: white; margin-top: 0.5rem; }
+        button:hover { opacity: 0.9; }
+        .info { text-align: center; margin-top: 1.5rem; font-size: 0.9rem; color: #6b7280; }
+        .error-msg { color: #dc2626; background: #fee2e2; padding: 10px; border-radius: 6px; margin-bottom: 1rem; display: none; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>PC AI Advisor</h2>
+        <div id="error" class="error-msg"></div>
+        
+        <form action="/login_user" method="POST">
+            <input type="text" name="username" placeholder="Uživatelské jméno" required>
+            <input type="password" name="password" placeholder="Heslo" required>
+            <button type="submit" class="btn-login">Vstoupit do aplikace</button>
+        </form>
+
+        <div class="info">Nemáte účet? Zaregistrujte se níže:</div>
+        
+        <form action="/register_user" method="POST">
+            <input type="text" name="username" placeholder="Nové jméno" required>
+            <input type="password" name="password" placeholder="Nové heslo" required>
+            <button type="submit" class="btn-reg">Vytvořit nový účet</button>
+        </form>
+    </div>
+</body>
+</html>
