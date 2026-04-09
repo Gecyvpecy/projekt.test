@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard</title>
+    <style>
+        body { font-family: sans-serif; background: #f4f7fe; color: #2b3674; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .grid { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; }
+        .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .user-item { background: #f8faff; padding: 10px; border-radius: 8px; margin-bottom: 5px; font-weight: bold; }
+        .log-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        .log-table td { padding: 10px; border-top: 1px solid #eee; }
+        .tag { padding: 3px 7px; border-radius: 4px; font-size: 10px; font-weight: bold; color: white; }
+        .tag-login { background: #4361ee; }
+        .tag-reg { background: #05cd99; }
+        .tag-ai { background: #6b46c1; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Admin Panel 🔐</h1>
+            <a href="/" style="text-decoration: none; color: #4361ee; font-weight: bold;">← Zpět</a>
+        </header>
+
+        <div class="grid">
+            <div class="card">
+                <h2>Uživatelé ({{ uzivatele|length }})</h2>
+                {% for u in uzivatele %}
+                    <div class="user-item">{{ u }}</div>
+                {% endfor %}
+            </div>
+            <div class="card">
+                <h2>Historie (Redis)</h2>
+                <table class="log-table">
+                    {% for log in logy %}
+                    <tr>
+                        <td>
+                            {% if 'Login' in log %}<span class="tag tag-login">LOGIN</span>
+                            {% elif 'Registrace' in log %}<span class="tag tag-reg">REG</span>
+                            {% else %}<span class="tag tag-ai">AI</span>{% endif %}
+                        </td>
+                        <td>{{ log }}</td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
