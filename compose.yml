@@ -1,5 +1,5 @@
 services:
-  web:
+  web_app:
     build: .
     ports:
       - "8081:8081"
@@ -7,9 +7,9 @@ services:
       - PORT=8081
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - OPENAI_BASE_URL=${OPENAI_BASE_URL}
-      - REDIS_HOST=cache  # Název služby 'cache' funguje jako hostname
+      - REDIS_HOST=moje_db
     depends_on:
-      - cache
+      - moje_db
 
-  cache:
-    image: redis:7-alpine  # Použití povoleného image z tabulky
+  moje_db:
+    image: redis:7-alpine # Povolený image
