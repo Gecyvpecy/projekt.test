@@ -13,6 +13,7 @@ services:
 
   cache:
     image: redis:7-alpine
-    # Příkaz 'appendonly yes' zajistí, že se data zapisují na disk okamžitě
-    command: redis-server --appendonly yes
-
+    # Tady je to nejdůležitější:
+    # 1. --appendonly yes -> zapne ukládání na disk
+    # 2. --dir /data -> řekne Redisu, aby ukládal do té učitelovy složky
+    command: redis-server --appendonly yes --dir /data
