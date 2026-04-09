@@ -2,26 +2,37 @@ import os
 import requests
 import datetime
 import urllib3
+import redis  # Nutné pro splnění podmínky 2 služeb (bod 1 v novém zadání)
 from flask import Flask, request, jsonify, render_template
 from dotenv import load_dotenv
 
-# Vypne varování o nezabezpečeném HTTPS (protože používáme verify=False)
+# --- KONFIGURACE A ZABEZPEČENÍ ---
+# Vypne varování o SSL certifikátu pro školní server
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
+# Načte .env pro lokální vývoj (bod 4 zadání)
 load_dotenv()
 
 app = Flask(__name__)
 
-# Konfigurace - na serveru musí být OPENAI_BASE_URL=https://kurim.ithope.eu/v1
-api_key = os.environ.get("OPENAI_API_KEY",)
+# --- NAČTENÍ PROMĚNNÝCH PROSTŘEDÍ (BOD 2 ZADÁNÍ) ---
+api_key = os.environ.get("OPENAI_API_KEY")
 base_url = os.environ.get("OPENAI_BASE_URL", "https://kurim.ithope.eu/v1")
+# REDIS_HOST musí odpovídat názvu služby v compose.yml
+redis_host = os.environ.get("REDIS_HOST", "localhost")
+
+# --- PŘIPOJENÍ K DATABÁZI (BOD 5 ZADÁNÍ) ---
+# decode_responses=True zajistí, že z databáze dostaneme text, ne bajty
+cache = redis.Redis(host=redis_host, port=6379, decode_responses=True)
 
 @app.route('/', methods=['GET'])
 def home():
+    """Zobrazí hlavní stránku webu."""
     return render_template('index.html')
 
 @app.route('/status', methods=['GET'])
 def status():
+    """Vrací stav aplikace, autora a aktuální čas."""
     return jsonify({
         "status": "running",
         "timestamp": datetime.datetime.now().isoformat(),
@@ -31,6 +42,7 @@ def status():
 
 @app.route('/ai', methods=['POST'])
 def ai_advisor():
+    """Hlavní logika: Komunikace s AI a ukládání statistik do Redisu."""
     data = request.json
     budget = data.get("budget", "0")
     
@@ -48,14 +60,11 @@ def ai_advisor():
     }
 
     try:
-        # Skládání URL pro endpoint kurim.ithope.eu/v1
+        # Sestavení URL (ošetření lomítek na konci)
         clean_url = base_url.rstrip('/')
         target_url = f"{clean_url}/chat/completions"
         
-        # DEBUG výpis do konzole dockeru (uvidíš v logu, kam se to skutečně posílá)
-        print(f"DEBUG: Volám URL: {target_url}")
-
-        # verify=False je nutné, pokud server nemá platný SSL certifikát
+        # Odeslání požadavku na AI server v Kuřimi
         response = requests.post(
             target_url, 
             headers=headers, 
@@ -66,17 +75,18 @@ def ai_advisor():
         
         if response.status_code == 200:
             ai_response = response.json()['choices'][0]['message']['content']
-            return jsonify({"recommendation": ai_response})
-        else:
-            # Pokud server vrátí chybu, pošleme ji do frontendu pro diagnostiku
+            
+            # --- PRÁCE S DATABÁZÍ (REDIS) ---
+            # Zvýšíme počítadlo rad v databázi o jedna
+            try:
+                total_count = cache.incr('counter_advices')
+            except Exception:
+                total_count = "N/A (DB error)"
+
             return jsonify({
-                "error": f"Server vrátil {response.status_code}.",
-                "details": response.text
-            }), response.status_code
-
-    except Exception as e:
-        return jsonify({"error": f"Spojení selhalo: {str(e)}"}), 500
-
-if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+                "recommendation": ai_response,
+                "total_served": total_count  # Bonusová informace z DB
+            })
+        else:
+            return jsonify({
+                "error": f"LLM server vrátil chybu {response.status_code}",
