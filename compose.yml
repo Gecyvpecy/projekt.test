@@ -1,5 +1,5 @@
 services:
-  app:  # Místo 'web_app' použij jen 'app'
+  app:
     build: .
     ports:
       - "8081:8081"
@@ -11,5 +11,9 @@ services:
     depends_on:
       - cache
 
-  cache: # Název služby pro Redis
+  cache:
     image: redis:7-alpine
+    # Příkaz 'appendonly yes' zajistí, že se data zapisují na disk okamžitě
+    command: redis-server --appendonly yes
+    volumes:
+      - ./redis_data:/data
