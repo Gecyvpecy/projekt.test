@@ -2,92 +2,55 @@
 <html lang="cs">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Advisor | Výběr komponent</title>
+    <title>AI Poradce</title>
     <style>
-        :root { --primary: #2563eb; --dark: #1f2937; --bg: #f9fafb; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; color: var(--dark); }
-        nav { background: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .container { max-width: 800px; margin: 3rem auto; padding: 0 1rem; }
-        .main-card { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center; }
-        input { padding: 12px; width: 60%; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 1.1rem; margin-bottom: 1rem; }
-        button { padding: 12px 24px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 1.1rem; }
-        
-        #result-box { margin-top: 2rem; padding: 1.5rem; border-radius: 8px; display: none; line-height: 1.6; text-align: left; }
-        .success-res { background: #ecfdf5; border: 1px solid #10b981; color: #065f46; }
-        .error-res { background: #fef2f2; border: 1px solid #dc2626; color: #991b1b; }
-        
-        .loader { display: none; margin: 20px auto; border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        body { font-family: sans-serif; background: #f9fafb; margin: 0; }
+        nav { background: white; padding: 15px 30px; display: flex; justify-content: space-between; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .container { max-width: 600px; margin: 50px auto; padding: 20px; background: white; border-radius: 15px; text-align: center; }
+        input { padding: 12px; width: 60%; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem; }
+        button { padding: 12px 20px; background: #2563eb; color: white; border: none; border-radius: 8px; cursor: pointer; }
+        #res { margin-top: 20px; padding: 15px; border-radius: 8px; display: none; text-align: left; line-height: 1.5; }
+        .loader { display: none; border: 4px solid #f3f3f3; border-top: 4px solid #2563eb; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 15px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .logout-btn { color: #dc2626; text-decoration: none; font-weight: 600; border: 1px solid #dc2626; padding: 5px 12px; border-radius: 6px; }
-        .logout-btn:hover { background: #dc2626; color: white; }
     </style>
 </head>
 <body>
-
     <nav>
-        <div style="font-weight: bold; font-size: 1.2rem;">PC Budget AI 🤖</div>
+        <strong>PC Builder AI 🤖</strong>
         <div>
-            <span>Uživatel: <strong>{{ session['user'] }}</strong></span>
-            <a href="/logout" class="logout-btn" style="margin-left: 15px;">Odhlásit se</a>
+            <span>Uživatel: <b>{{ session['user'] }}</b></span>
+            <a href="/logout" style="margin-left: 15px; color: red; text-decoration: none;">Odhlásit</a>
         </div>
     </nav>
-
     <div class="container">
-        <div class="main-card">
-            <h1>Kolik chcete investovat?</h1>
-            <p>Zadejte váš budget v Kč a naše AI vám doporučí nejlepší komponentu.</p>
-            
-            <input type="number" id="budgetInput" placeholder="Např. 15000" min="0">
-            <br>
-            <button onclick="askAI()" id="sendBtn">Získat doporučení</button>
-            
-            <div id="loader" class="loader"></div>
-            <div id="result-box"></div>
-        </div>
+        <h1>Kolik chcete investovat?</h1>
+        <input type="number" id="budget" placeholder="Zadejte Kč">
+        <button onclick="ask()">Poradit</button>
+        <div id="loader" class="loader"></div>
+        <div id="res"></div>
     </div>
 
     <script>
-        async function askAI() {
-            const budget = document.getElementById('budgetInput').value;
-            const resultBox = document.getElementById('result-box');
-            const loader = document.getElementById('loader');
-            const btn = document.getElementById('sendBtn');
-
-            if (!budget) {
-                alert("Zadejte prosím částku.");
-                return;
-            }
-
-            resultBox.style.display = 'none';
-            loader.style.display = 'block';
-            btn.disabled = true;
-
-            try {
-                const response = await fetch('/ai', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ budget: budget })
-                });
-
-                const data = await response.json();
-                loader.style.display = 'none';
-                resultBox.style.display = 'block';
-                btn.disabled = false;
-
-                if (response.ok) {
-                    resultBox.className = 'success-res';
-                    resultBox.innerHTML = `<strong>Doporučení od AI:</strong><br>${data.recommendation}`;
-                } else {
-                    resultBox.className = 'error-res';
-                    resultBox.innerText = "Chyba: " + (data.error || "LLM server nenašel odpověď.");
-                }
-            } catch (err) {
-                loader.style.display = 'none';
-                resultBox.style.display = 'block';
-                resultBox.className = 'error-res';
-                resultBox.innerText = "Chyba: Spojení se serverem selhalo.";
-                btn.disabled = false;
+        async function ask() {
+            const b = document.getElementById('budget').value;
+            const r = document.getElementById('res');
+            const l = document.getElementById('loader');
+            if(!b) return alert("Zadej částku");
+            
+            r.style.display = 'none'; l.style.display = 'block';
+            const res = await fetch('/ai', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({budget: b})
+            });
+            const data = await res.json();
+            l.style.display = 'none'; r.style.display = 'block';
+            if(res.ok) {
+                r.style.background = '#ecfdf5';
+                r.innerHTML = `<b>Návrh AI:</b><br>${data.recommendation}`;
+            } else {
+                r.style.background = '#fef2f2';
+                r.innerText = data.error;
             }
         }
     </script>
