@@ -1,5 +1,5 @@
 import os
-import redis
+import sqlite3
 import datetime
 import requests
 import urllib3
@@ -11,16 +11,31 @@ from dotenv import load_dotenv
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 load_dotenv()
 
-app = Flask(__name__)
-app.secret_key = os.environ.get("FLASK_SECRET", "tajny-klic-123")
+# --- CESTA K DATABÁZI (Perzistentní složka) ---
+DB_PATH = "/data/users.db"
+
+def get_db_connection():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def init_db():
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    conn = get_db_connection()
+    # Tabulka pro uživatele
+    conn.execute('''CREATE TABLE IF NOT EXISTS users 
+                    (username TEXT PRIMARY KEY, password TEXT)''')
+    # Tabulka pro logy
+    conn.execute('''CREATE TABLE IF NOT EXISTS logs 
+                    (id INTEGER PRIMARY KEY AUTOINCREMENT, message TEXT, timestamp DATETIME)''')
+    conn.commit()
+    conn.close()
+
+init_db()
 
 # --- PROMĚNNÉ PROSTŘEDÍ ---
 api_key = os.environ.get("OPENAI_API_KEY")
 base_url = os.environ.get("OPENAI_BASE_URL", "https://kurim.ithope.eu/v1")
-redis_host = os.environ.get("REDIS_HOST", "cache")
-
-# --- PŘIPOJENÍ K DB ---
-r = redis.Redis(host=redis_host, port=6379, decode_responses=True)
 
 @app.route('/')
 def index():
@@ -39,13 +54,22 @@ def register():
     if not username or not password:
         flash('Vyplňte všechna pole!', 'error')
         return redirect(url_for('login_page'))
-    if r.exists(f"user:{username}"):
+    
+    conn = get_db_connection()
+    user = conn.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
+    
+    if user:
+        conn.close()
         flash('Uživatel již existuje!', 'error')
         return redirect(url_for('login_page'))
     
     hashed_pw = generate_password_hash(password)
-    r.set(f"user:{username}", hashed_pw)
-    r.lpush('log_pristupu', f"Registrace: {username} ({datetime.datetime.now().strftime('%H:%M:%S')})")
+    conn.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, hashed_pw))
+    conn.execute("INSERT INTO logs (message, timestamp) VALUES (?, ?)", 
+                 (f"Registrace: {username}", datetime.datetime.now()))
+    conn.commit()
+    conn.close()
+    
     flash('Registrace úspěšná! Nyní se přihlaste.', 'success')
     return redirect(url_for('login_page'))
 
@@ -53,13 +77,19 @@ def register():
 def login():
     username = request.form.get('username')
     password = request.form.get('password')
-    stored_hash = r.get(f"user:{username}")
     
-    if stored_hash and check_password_hash(stored_hash, password):
+    conn = get_db_connection()
+    user = conn.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
+    
+    if user and check_password_hash(user['password'], password):
         session['user'] = username
-        r.lpush('log_pristupu', f"Login: {username} ({datetime.datetime.now().strftime('%H:%M:%S')})")
+        conn.execute("INSERT INTO logs (message, timestamp) VALUES (?, ?)", 
+                     (f"Login: {username}", datetime.datetime.now()))
+        conn.commit()
+        conn.close()
         return redirect(url_for('index'))
     else:
+        conn.close()
         flash('Špatné jméno nebo heslo!', 'error')
         return redirect(url_for('login_page'))
 
@@ -68,23 +98,30 @@ def logout():
     session.pop('user', None)
     return redirect(url_for('login_page'))
 
-# --- ZABEZPEČENÝ ADMIN PANEL ---
 @app.route('/status')
 def status():
     if 'user' not in session:
         flash('Pro vstup do administrace se musíte přihlásit.', 'error')
         return redirect(url_for('login_page'))
 
+    conn = get_db_connection()
     if session['user'] != 'admin':
-        r.lpush('log_pristupu', f"NEPOVOLENÝ POKUS: {session['user']} chtěl do admina!")
-        return "<h1>Přístup odepřen</h1><p>Tato sekce je pouze pro administrátora.</p>", 403
+        conn.execute("INSERT INTO logs (message, timestamp) VALUES (?, ?)", 
+                     (f"NEPOVOLENÝ POKUS: {session['user']}", datetime.datetime.now()))
+        conn.commit()
+        conn.close()
+        return "<h1>Přístup odepřen</h1>", 403
 
-    user_keys = r.keys("user:*")
-    seznam_uzivatelu = [k.replace("user:", "") for k in user_keys]
-    logs = r.lrange('log_pristupu', 0, -1)
+    uzivatele = conn.execute("SELECT username FROM users").fetchall()
+    logy_db = conn.execute("SELECT message, timestamp FROM logs ORDER BY timestamp DESC").fetchall()
+    conn.close()
+
+    # Formátování logů pro šablonu (vytvoření textového řetězce jako to dělal Redis lpush)
+    seznam_uzivatelu = [u['username'] for u in uzivatele]
+    logs = [f"{l['message']} ({l['timestamp']})" for l in logy_db]
+    
     return render_template('admin.html', uzivatele=seznam_uzivatelu, logy=logs)
 
-# --- AI LOGIKA ---
 @app.route('/ai', methods=['POST'])
 def ai_advisor():
     if 'user' not in session:
@@ -96,14 +133,17 @@ def ai_advisor():
     payload = {"model": "gemma3:27b", "messages": [{"role": "user", "content": f"PC komponenta za {budget} Kč. Jedna věta."}], "stream": False}
 
     try:
-        # Oprava URL (odstranění koncového lomítka a přidání správného endpointu)
         clean_url = f"{base_url.rstrip('/')}/chat/completions"
         res = requests.post(clean_url, headers=headers, json=payload, timeout=20, verify=False)
         if res.status_code == 200:
             msg = res.json()['choices'][0]['message']['content']
-            r.lpush('log_pristupu', f"AI Dotaz: {session['user']} (Budget: {budget})")
+            conn = get_db_connection()
+            conn.execute("INSERT INTO logs (message, timestamp) VALUES (?, ?)", 
+                         (f"AI Dotaz: {session['user']} (Budget: {budget})", datetime.datetime.now()))
+            conn.commit()
+            conn.close()
             return jsonify({"recommendation": msg})
-        return jsonify({"error": f"Chyba LLM: {res.status_code}"}), 500
+        return jsonify({"error": f"Chyba LLM"}), 500
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
