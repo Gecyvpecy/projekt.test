@@ -10,9 +10,6 @@ from dotenv import load_dotenv
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 load_dotenv()
 
-app = Flask(__name__)
-app.secret_key = os.environ.get("FLASK_SECRET", "tajny-klic-123")
-
 # Připojení k Redisu
 redis_host = os.environ.get("REDIS_HOST", "cache")
 r = redis.Redis(host=redis_host, port=6379, decode_responses=True)
