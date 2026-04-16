@@ -4,48 +4,137 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Přihlášení | PC AI Advisor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        :root { --primary: #2563eb; --secondary: #10b981; --dark: #1f2937; --light: #f3f4f6; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--light); display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .card { background: white; padding: 2.5rem; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
-        h2 { text-align: center; color: var(--dark); margin-bottom: 1.5rem; }
-        input { width: 100%; padding: 12px; margin-bottom: 1rem; border: 1px solid #d1d5db; border-radius: 8px; box-sizing: border-box; font-size: 1rem; }
-        button { width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+        :root {
+            --primary: #6366f1;
+            --secondary: #10b981;
+            --bg: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --text-light: #f8fafc;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at bottom left, #1e1b4b, #0f172a);
+            color: var(--text-light);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .auth-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            padding: 2.5rem;
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        .logo-icon {
+            font-size: 3rem;
+            color: var(--primary);
+            margin-bottom: 1rem;
+        }
+
+        h2 { margin-bottom: 1.5rem; letter-spacing: -1px; }
+
+        .input-group { position: relative; margin-bottom: 1rem; }
+        .input-group i {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 12px 12px 45px;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            color: white;
+            box-sizing: border-box;
+            transition: 0.3s;
+        }
+
+        input:focus { outline: none; border-color: var(--primary); }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.3s;
+            margin-top: 0.5rem;
+        }
+
         .btn-login { background: var(--primary); color: white; }
-        .btn-reg { background: var(--secondary); color: white; margin-top: 0.5rem; }
-        button:hover { opacity: 0.9; }
-        .info { text-align: center; margin-top: 1.5rem; font-size: 0.9rem; color: #6b7280; }
+        .btn-reg { background: transparent; border: 1px solid var(--secondary); color: var(--secondary); margin-top: 1.5rem; }
         
-        /* Styl pro chybové hlášky */
-        .msg { padding: 10px; border-radius: 8px; margin-bottom: 1rem; text-align: center; font-weight: 500; }
-        .error { background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; }
-        .success { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+        button:hover { transform: translateY(-2px); opacity: 0.9; }
+
+        .flash-msg {
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            font-size: 0.85rem;
+        }
+        .error { background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3); }
+        .success { background: rgba(16, 185, 129, 0.2); color: #a7f3d0; border: 1px solid rgba(16, 185, 129, 0.3); }
+
+        .divider {
+            margin: 1.5rem 0;
+            display: flex;
+            align-items: center;
+            color: #475569;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+        }
+        .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: #334155; margin: 0 10px; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h2>PC AI Advisor</h2>
+    <div class="auth-card">
+        <i class="fas fa-user-shield logo-icon"></i>
+        <h2>Vítejte zpět</h2>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}
             {% for category, message in messages %}
-              <div class="msg {{ category }}">{{ message }}</div>
+              <div class="flash-msg {{ category }}">{{ message }}</div>
             {% endfor %}
           {% endif %}
         {% endwith %}
-        
+
         <form action="/login_user" method="POST">
-            <input type="text" name="username" placeholder="Uživatelské jméno" required>
-            <input type="password" name="password" placeholder="Heslo" required>
-            <button type="submit" class="btn-login">Vstoupit do aplikace</button>
+            <div class="input-group">
+                <i class="fas fa-user"></i>
+                <input type="text" name="username" placeholder="Uživatelské jméno" required>
+            </div>
+            <div class="input-group">
+                <i class="fas fa-lock"></i>
+                <input type="password" name="password" placeholder="Heslo" required>
+            </div>
+            <button type="submit" class="btn-login">Přihlásit se</button>
         </form>
 
-        <div class="info">Nemáte účet? Zaregistrujte se níže:</div>
-        
+        <div class="divider">Nebo nový účet</div>
+
         <form action="/register_user" method="POST">
-            <input type="text" name="username" placeholder="Nové jméno" required>
-            <input type="password" name="password" placeholder="Nové heslo" required>
-            <button type="submit" class="btn-reg">Vytvořit nový účet</button>
+            <input type="text" name="username" placeholder="Zvolte jméno" required style="margin-bottom: 0.5rem;">
+            <input type="password" name="password" placeholder="Zvolte heslo" required>
+            <button type="submit" class="btn-reg">Registrovat se</button>
         </form>
     </div>
 </body>
