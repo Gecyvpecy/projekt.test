@@ -68,7 +68,7 @@ def logout():
 
 @app.route('/status')
 def status():
-    if 'user' not in session or session['user'] != 'admin':
+    if 'user' not in session or session['user'] != 'admin1':
         return "<h1>Přístup odepřen</h1>", 403
 
     user_keys = r.keys("user:*")
