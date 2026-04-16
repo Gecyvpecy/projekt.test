@@ -15,4 +15,4 @@ services:
     image: redis:7-alpine
     # Příkaz 'appendonly yes' zapne ukládání na disk
     # Příkaz '--dir /data' řekne Redisu, aby soubor s daty uložil do té 1GB složky
-    command: redis-server --appendonly yes --dir /data
+
